@@ -1,0 +1,52 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.TH CPW2 1 "May 3, 2017"
+.SH NAME
+cwp2 \- compress an image file to a WP2 file
+.SH SYNOPSIS
+.B cwp2
+.RI [ options ] " input_file \-o output_file.wp2
+.br
+.SH DESCRIPTION
+This manual page documents the
+.B cwp2
+command.
+.PP
+\fBcwp2\fP compresses an image using the WP2 format.
+Input format can be either PNG, JPEG, TIFF, PNM.
+.SH OPTIONS
+The basic options are:
+.TP
+.BI \-o " string
+Specify the name of the output WP2 file. If omitted, \fBcwp2\fP will
+perform compression but only report statistics.
+Using "\-" as output name will direct output to 'stdout'.
+.TP
+.BI \-nometadata
+Drop any metadata present in the source image.
+.TP
+.BI \-crop x_position y_position width height
+Crop the source to a rectangle with top\-left corner at coordinates
+(\fBx_position\fP, \fBy_position\fP) and size \fBwidth\fP x \fBheight\fP.
+This cropping area must be fully contained within the source rectangle.
+.TP
+.BI \-short
+Condense the printed message.
+.TP
+.BI \-summary
+Print summary and statistics.
+.TP
+.BI \-quiet
+Don't print anything.
+.TP
+.BI \-version
+Print version number and exit.
+.TP
+.BI -noasm
+Disable all assembly optimizations.
+.TP
+
+.SH SEE ALSO
+.BR dwp2 (1),
+.br
+Please refer to http://developers.google.com/speed/webp/ for additional
+information.

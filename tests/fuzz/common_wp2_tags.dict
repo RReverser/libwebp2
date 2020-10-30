@@ -1,0 +1,10 @@
+# Common markers from WP2 format.
+# They will be used randomly by the cc_fuzz_targets.
+# Lines starting with '#' and empty lines are ignored. Use \xAB for hex values.
+
+# Signature
+"\x6F\xFF\xF4"
+
+# ANMF
+"\x33"
+"\x15"

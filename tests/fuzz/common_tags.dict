@@ -1,0 +1,54 @@
+# Common markers from formats handled by WP2 imageio.
+# They will be used randomly by the cc_fuzz_targets.
+# Lines starting with '#' and empty lines are ignored. Use \xAB for hex values.
+
+# Generic
+"RIFF"
+"ICCP"
+"EXIF"
+"XMP "
+
+# WebP
+"WEBP"
+"VP8 "
+"VP8L"
+"VP8X"
+"ANIM"
+"ANMF"
+"ALPH"
+
+# WP2 (signature, ANMF)
+"\x6F\xFF\xF4"
+"\x33"
+"\x15"
+
+# PNG
+"\x89PNG"
+"IHDR"
+"IDAT"
+"IEND"
+
+# JPEG
+"\xFF\xD8\xFF"
+"\xFF\xC0"
+"\xFF\xC2"
+"\xFF\xC4"
+"\xFF\xDB"
+"\xFF\xDD"
+"\xFF\xDA"
+"\xFF\xD0"
+"\xFF\xD1"
+"\xFF\xD2"
+"\xFF\xD3"
+"\xFF\xD4"
+"\xFF\xD5"
+"\xFF\xD6"
+"\xFF\xD7"
+"\xFF\xE0"
+"\xFF\xFE"
+"\xFF\xD9"
+
+# GIF
+"GIF"
+"87a"
+"89a"

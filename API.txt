@@ -1,0 +1,292 @@
+WEBP v2 API summary:
+====================
+
+DECISIONS:
+  * Use Argb exchange format for API/IO
+  * width / height / stride are all uint32_t, to reduce overflow problems.
+    No more 'int'.
+  * common WP2Status for the whole library (encoding, decoding, demuxing, ...)
+  * All non bool-returning functions should return a WP2Status.
+  * metadata is associated with WP2ArgbBuffer.
+  * removed WP2DecodeRGBA and renamed WP2DecodeRGBAInto as WP2DecodeArgb_32.
+    We can provide a WP2DecodeRGBA() as an example/code-snippet (in extras/)
+
+QUESTIONS:
+  * What about more-than-4-channels situation ? (reflectance, normal-map, etc.)
+  * For output (decoding), need adapters for Argb -> user-supplied final
+    format? What about storage then, do we need to allocate Argb ?
+  * In particular, how to handle the important case of RGB565 and RGB4444
+    output?
+  * ArgbBuffer::Argb -> uint16_t? int16_t? uint8_t? void*?
+  * Handle of metadata. In src/utils/ ?
+
+API questions:
+  * remove WP2DecodeRGBA() variant in favor of WP2DecodeRGBAInto()? We want
+    to encourage user decoding into pre-allocated buffer directly. But this
+    means parsing the bitstream beforehand (to retrieve width/height) and
+    pre-allocated the buffer. -> more work.
+    Should we remove WP2DecodeRGBAInto() instead and just keep WP2Decode()
+    for direct-to-buffer decoding?
+    => done
+  * How to pass decoding parameters (-mt, fancy, etc.)?
+
+CODING STYLE:
+  * naming is: WP2 + Object + Action. Eg: WP2ConfigValidate
+    (not: WP2ValidateConfig!!)
+  * ctor / dtor :
+      WP2xxxInit():  if the object is not allocated, but simple bzero'd.
+                       No validation or memory release occur.
+      WP2xxxNew():   if the object is allocated. New() = malloc() + Init().
+      WP2xxxClear(): to reset the state, possibly deallocating memory
+                      (unlike of WP2xxxReset, there's not guaranty that all
+                      resources are released)
+      WP2xxxReset(): to clean-up all memory (but not deleting the object).
+                     Calls Init() afterward. The object is guaranteed to not
+                     leak any resource afterward.
+      WP2xxxDelete(): to reset and release the object
+                      (Delete = Reset() + free())
+                      Must be go in pair with WP2xxxNew()
+
+      If an object doesn't have a WP2xxxClear() or WP2xxxReset() method, it
+      is implied it doesn't allocate any resource (and is reasonably short
+      enough to be an automatic object on the stack).
+      Typical case: Config or wrappers.
+
+  * parameters: non-const output/input-related, parameters, const input-related.
+    e.g:
+     void DoSomething(WP2Obj1* out, int strength, const WP2Obj1* input)
+    Rationale: hard to emulate a 'this' pointer if you put the 'output'
+               parameter last.
+  * use "* " instead of " *"
+  * use '* const*' whenever possible (except in the public API)
+  * [if C++, use const& for input]
+
+//------------------------------------------------------------------------------
+// BASE (base.h):
+
+ *** version ***
+int WP2GetVersion(void);
+int WP2GetABIVersion(void);
+
+ *** memory ***
+
+void* WP2Malloc(uint64_t num_elements, size_t element_size);
+void* WP2Calloc(uint64_t num_elements, size_t element_size);
+void WP2Free(void* ptr);
+
+<!> -> need a memory arena object instead?
+
+*** WP2Status ***
+
+typedef enum {
+  WP2_STATUS_OK = 0,
+  WP2_STATUS_VERSION_MISMATCH,
+  WP2_STATUS_OUT_OF_MEMORY,            // memory error allocating objects
+  WP2_STATUS_INVALID_PARAMETER,        // a parameter value is invalid
+  WP2_STATUS_NULL_PARAMETER,           // a pointer parameter is NULL
+  WP2_STATUS_BAD_DIMENSION,            // picture has invalid width/height
+  WP2_STATUS_USER_ABORT,               // abort request by user
+  WP2_STATUS_UNSUPPORTED_FEATURE,      // unsupported feature
+  // the following are specific to decoding:
+  WP2_STATUS_BITSTREAM_ERROR,          // bitstream has syntactic error
+  WP2_STATUS_NOT_ENOUGH_DATA,          // premature EOF during decoding
+  WP2_STATUS_BAD_READ,                 // error while reading bytes
+  // the following are specific to encoding:
+  WP2_STATUS_BITSTREAM_OUT_OF_MEMORY,  // memory error while flushing bits
+  WP2_STATUS_INVALID_CONFIGURATION,    // encoding configuration is invalid
+  WP2_STATUS_BAD_WRITE,                // error while flushing bytes
+  WP2_STATUS_FILE_TOO_BIG,             // file is bigger than 4G
+  WP2_STATUS_INVALID_COLORSPACE,       // encoder called with bad colorspace
+
+  WP2_STATUS_LAST                      // list terminator. always last.
+} WP2Status;
+const char* WP2GetStatusMessage(WP2Status status);
+const char* WP2GetStatusText(WP2Status status);
+
+*** WP2SampleFormat ***
+
+typedef enum {
+  // 32b/pixel formats
+  WP2_Argb_32 = 0,
+  WP2_ARGB_32,
+  WP2_XRGB_32,
+
+  WP2_rgbA_32,
+  WP2_RGBA_32,
+  WP2_RGBX_32,
+
+  WP2_bgrA_32,
+  WP2_BGRA_32,
+  WP2_BGRX_32,
+
+  // 24b/pixel formats
+  WP2_RGB_24,
+  WP2_BGR_24,
+
+  // ...
+} WP2SampleFormat;
+
+size_t WP2FormatBpp(WP2SampleFormat format);
+
+*** WP2ArgbBuffer: Main pixel-echanging struct ***
+
+struct WP2ArgbBuffer {         // view as R/G/B/A
+  WP2SampleFormat format;      // Should always be WP2_Argb_32 for encoding
+
+  uint32_t width, height;      // picture dimension
+  void* Argb;                  // pointer to Argb samples
+  uint32_t stride;             // stride in bytes from one scanline to the next
+  size_t size;                 // total size of the *Argb buffer.
+
+  int is_external_memory;      // If non-zero, 'internal_memory' pointer is not
+                               // used. If value is '2' or more, the external
+                               // memory is considered 'slow' and multiple
+                               // read/write will be avoided.
+
+  WP2Metadata metadata;        // ICC / XMP / EXIF metadata
+
+// private:
+  uint8_t* private_memory;     // Internally allocated memory (only when
+                               // is_external_memory is 0). Should not be used
+                               // externally, but accessed via the buffer union.
+  void* converter;             // converting chain
+  uint32_t pad[4];             // padding for later use
+};
+
+WP2Status WP2ArgbBufferInit(WP2ArgbBuffer* buffer);
+WP2Status WP2ArgbBufferResize(WP2ArgbBuffer* buffer, uint32_t width,
+                              uint32_t height);
+void WP2ArgbBufferReset(WP2ArgbBuffer* buffer);
+
+WP2Status WP2ArgbBufferImport(WP2ArgbBuffer* buffer, WP2SampleFormat format,
+                              uint32_t width, uint32_t height,
+                              const uint8_t* samples, uint32_t stride);
+
+WP2Status WP2ArgbBufferImportRow(WP2ArgbBuffer* buffer, WP2SampleFormat format,
+                                 uint32_t row, const uint8_t* samples);
+
+WP2Status WP2ArgbBufferSetView(WP2ArgbBuffer* buffer,
+                               uint32_t width, uint32_t height,
+                               uint8_t* samples, uint32_t stride,
+                               int is_slow_external_memory);
+
+int WP2ArgbBufferHasTransparency(const WP2ArgbBuffer* buffer);
+
+<!> -> do we need to offer 16b A/rgb interface? Or just reserve 16b for internal
+       representation?
+<!> -> Do we need to expose a WP2Data here? (const uint8_t* data,
+       size_t data_size) vector<>? string<>?
+
+//------------------------------------------------------------------------------
+// DECODING (decode.h):
+
+*** Features ***
+
+struct WP2BitstreamFeatures {
+  uint32_t width;     // Width in pixels, as read from the bitstream.
+  uint32_t height;    // Height in pixels, as read from the bitstream.
+  int has_alpha;      // True if the bitstream contains an alpha channel.
+  int has_animation;  // True if the bitstream is an animation.
+  int format;         // 0 = undefined (/mixed), 1 = lossy, 2 = lossless
+};
+
+WP2StatusCode WP2GetFeatures(WP2BitstreamFeatures* features,
+                             const uint8_t* data, size_t data_size);
+
+*** Simple decoding calls ***
+
+WP2Status WP2Decode(WP2ArgbBuffer* output_buffer,
+                    const uint8_t* data, size_t data_size);
+
+WP2Status WP2DecodeArgb_32(uint8_t* output_buffer, uint32_t output_stride,
+                           size_t output_buffer_size,
+                           const uint8_t* data, size_t data_size);
+
+*** Advanced decoding calls ***
+
+WP2Decoder* WP2DecoderNew(WP2ArgbBuffer* output_buffer);
+WP2StatusCode WP2DecoderAppend(WP2Decoder* idec, const uint8_t* data,
+                               size_t data_size);
+WP2StatusCode WP2DecoderUpdate(WP2Decoder* idec, const uint8_t* data,
+                               size_t data_size);
+const WP2ArgbBuffer* WP2DecoderUpdatedArea(const WP2Decoder* idec,
+                                           uint32_t* left, uint32_t* top,
+                                           uint32_t* width, uint32_t* height);
+void WP2DecoderDelete(WP2Decoder* idec);
+
+<!> -> Do we need update? Or just Append() ? Append is useful for Chord or Rope.
+
+<!> -> What with decoding options (cropping, rescaling, ...)?
+
+//------------------------------------------------------------------------------
+// ENCODING (encode.h)
+
+*** Encoding parameters ***
+
+struct WP2Config {
+  float quality;
+  int speed;
+ ...
+};
+
+WP2Status WP2ConfigInit(WP2Config* config);
+WP2Status WP2ConfigValidate(const WP2Config* config);
+
+*** WP2MemoryWriter ***
+  same as WebP
+
+*** WP2ProgressHook ***
+  same as WebP
+
+*** picture hints ***
+
+typedef enum WP2PictureHint {
+  WP2_HINT_NONE = 0,     // nothing particular (default)
+  WP2_HINT_PICTURE,      // digital picture, like portrait, inner shot
+  WP2_HINT_PHOTO,        // outdoor photograph, with natural lighting
+  WP2_HINT_DRAWING,      // hand or line drawing, with high-contrast details
+  WP2_HINT_ICON,         // small-sized colorful images
+  WP2_HINT_TEXT          // text-like
+  ...
+};
+
+<!>  -> Should we also include hints about the source? (WP2_HINT_SRC_IS_JPEG,
+        WP2_HINT_SRC_IS_GIF, ...?)
+
+*** main WP2Picture object ***
+
+struct WP2Picture {
+  WP2ArgbBuffer Argb;            // input buffer
+  WP2PictureHint picture_hint;   // Indication of the picture's source
+  int sharp_yuv;                 // 0=off, 1=use slower sharp YUV conversion
+
+  WP2WriterFunction writer;   // can be NULL
+  void* custom_ptr;           // can be used by the writer.
+  size_t coded_size;          // total coded size from last call
+
+  WP2ProgressHook progress_hook;
+
+  void* user_data;        // this field is free to be set to any value and
+                          // used during callbacks (like progress-report e.g.).
+...
+};
+
+WP2Status WP2PictureInit(WP2Picture* picture);
+
+*** WP2Picture utils ***
+void WP2PictureFree(WP2Picture* picture);
+
+<!> -> do we need proxy funcs here?
+<!> -> do we need a "int WP2PictureCopy(WP2Picture* dst, const WP2Picture* src)"
+<!> -> do we need a "int WP2PictureClone(WP2Picture* dst,
+                                         const WP2Picture* src)"
+       to allow Copy-On-Write later?
+
+
+WP2Status WP2ArgbBufferDistortion(const WP2ArgbBuffer* src,
+                                  const WP2ArgbBuffer* ref,
+                                  int metric_type, float result[5]);
+
+*** main call ***
+WP2EncodingError WP2Encode(const WP2Picture* picture,
+                           const WP2Config* config);

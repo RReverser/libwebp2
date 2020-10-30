@@ -1,0 +1,23 @@
+set(@PACKAGE_PREFIX@_VERSION @PROJECT_VERSION@)
+
+@PACKAGE_INIT@
+
+include (CMakeFindDependencyMacro)
+
+if(@WP2_USE_THREAD@)
+  find_dependency(Threads REQUIRED)
+endif()
+if(@WP2_HAVE_PNG@)
+  find_dependency(PNG REQUIRED)
+endif()
+if(@WP2_HAVE_JPEG@)
+  find_dependency(JPEG REQUIRED)
+endif()
+if(@WP2_HAVE_TIFF@)
+  find_dependency(TIFF REQUIRED)
+endif()
+if(@WP2_HAVE_WebP@)
+  find_dependency(WebP REQUIRED)
+endif()
+
+include ("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")

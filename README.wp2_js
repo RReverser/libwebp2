@@ -1,0 +1,76 @@
+  __   __ ____ ___      __  ____
+ /  \\/  \  _ \_  \    (__)/  __\
+ \       /  __//  /_   _)  \_   \
+  \__\__/__/  /____/  /____/____/
+
+
+Description:
+============
+
+This file describes the compilation of libwp2 into a JavaScript decoder
+using Emscripten and CMake.
+
+ - install the Emscripten SDK following the procedure described at:
+   https://kripken.github.io/emscripten-site/docs/getting_started/downloads.html
+   After installation, you should have some global variable positioned to the
+   location of the SDK. In particular, $EMSCRIPTEN should point to the
+   top-level directory containing Emscripten tools.
+
+ - make sure the file $EMSCRIPTEN/cmake/Modules/Platform/Emscripten.cmake is
+   accessible. This is the toolchain file used by CMake to invoke Emscripten.
+
+ - configure the project 'WP2_JS' with CMake using:
+
+ cd wp2_js && \
+ cmake -DWP2_BUILD_WP2_JS=ON \
+       -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=1 \
+       -DCMAKE_TOOLCHAIN_FILE=$EMSCRIPTEN/cmake/Modules/Platform/Emscripten.cmake \
+       ../
+
+ - compile wp2.js using 'make'.
+
+ - that's it! Upon completion, you should have the wp2.js file generated.
+
+The callable JavaScript function is WP2ToSDL(), which decodes a raw WP2
+bitstream into a canvas. See wp2_js/index.html for a simple usage sample
+(see below for instructions).
+
+Demo HTML page:
+===============
+
+   The HTML page wp2_js/index.html requires an HTTP server to serve the WP2
+   image example. It's easy to just use Python for that.
+
+cd wp2_js && python -m SimpleHTTPServer 8080
+
+and then navigate to http://localhost:8080 in your favorite browser.
+
+
+Web-Assembly (WASM) version:
+============================
+
+  CMakeLists.txt is configured to build the WASM version when using
+  the option WP2_BUILD_WP2_JS=ON. The compilation step will assemble
+  the files 'wp2_wasm.js', 'wp2_wasm.wasm' in the wp2_js/ directory.
+  See wp2_js/index_wasm.html for a simple demo page using the WASM version
+  of the library.
+
+  You will need a fairly recent version of Emscripten (at least 1.37.8) and of
+  your WASM-enabled browser to run this version. Consider it very experimental!
+
+Caveat:
+=======
+
+  - First decoding using the library is usually slower, due to just-in-time
+    compilation.
+
+  - Some versions of llvm produce the following compile error when SSE2 is
+    enabled.
+
+"Unsupported:   %516 = bitcast <8 x i16> %481 to i128
+ LLVM ERROR: BitCast Instruction not yet supported for integer types larger than 64 bits"
+
+    The corresponding Emscripten bug is at:
+    https://github.com/kripken/emscripten/issues/3788
+
+    Therefore, SSE2 optimization is currently disabled in CMakeLists.txt.
