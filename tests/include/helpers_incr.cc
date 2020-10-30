@@ -382,7 +382,10 @@ WP2Status DecodeIncremental(const DecoderConfig& config, DataView input,
       } else {
         if (!idec->TryGetDecodedFeatures()->has_trailing_data && !rewinded &&
             frame_index == 0 && available_input_size < input.size) {
-          CHECK_OR_DIE(idec->GetNumAvailableFrames() == 0u);
+          // If a frame was decoded, it means thet there are more bytes in
+          // 'input' than a complete valid bitstream.
+          WP2_CHECK_OK(idec->GetNumAvailableFrames() == 0u,
+                       WP2_STATUS_BITSTREAM_ERROR);
         }
         previous_decoded_area = decoded_area;
       }
