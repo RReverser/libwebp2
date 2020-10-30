@@ -70,17 +70,25 @@ $ cwp2 -q 70 -f frame1.png 10 frame2.png 20 frame3.png 5 -o output.wp2
 
 Important options:
 
-| Flag              | Default value | Description                              |
-|-------------------|:-------------:|------------------------------------------|
-| `-o <string>`     |               | output file                              |
-| `-q <float>`      | 75            | quality factor (0:small..95:big,         |
-:                    :              : 96-99\:almost lossless, 100\:lossless)   :
-| `-alpha_q <float>` | 100          | alpha quality factor (0:small..95:big,
-:                    :              : 96-99\:almost lossless, 100\:lossless)   :
-| `-speed <int>`     | 5            | compression effort  |
-:                    :              : (0\:fast..9\:slower/better)              :
-| `-f [<str> <int>]` |              | create an animation (alternate image and |
-:                    :              : duration in ms)                          :
+|      Flag     | Default value |                 Description                 |
+|--------------------|:---:|--------------------------------------------------|
+| `-o <string>`      |     | output file path                                 |
+| `-q <float>`       | 75  | image quality factor \[0=lossy : 100=lossless\]* |
+| `-alpha_q <float>` | 100 | alpha quality factor \[0=lossy : 100=lossless\]* |
+| `-speed <int>`     | 5   | compression effort \[0=fast : 9=slower/better\]  |
+| `-f [<str> <int>]` |     | create an animation (alternate image, duration)  |
+
+\* The quality factor range corresponds to:
+
+|   Quality factor   | Meaning                                                 |
+|:------------------:|---------------------------------------------------------|
+|         0          | Lossy compression, smallest file size and worst quality |
+|        ...         | Lossy compression                                       |
+|         95         | Lossy compression, biggest file size and best quality   |
+|         96         | Near-lossless compression (maximum preprocessing)       |
+|        ...         | Near-lossless compression                               |
+|         99         | Near-lossless compression (minimum preprocessing)       |
+|        100         | Lossless compression                                    |
 
 Use `cwp2 -h` to see a full list of available options.
 
