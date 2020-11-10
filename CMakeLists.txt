@@ -33,7 +33,12 @@ if(POLICY CMP0048)
 endif(POLICY CMP0048)
 
 # Options for coder / decoder executables.
-option(WP2_ENABLE_SIMD "Enable any SIMD optimization." ON)
+if(NOT EMSCRIPTEN)
+  # Disable SIMD on Emscripten by default, as it's a new unstable Wasm feature.
+  # Users can still explicitly opt-in to make a SIMD-enabled build.
+  set(WP2_ENABLE_SIMD_DEFAULT ON)
+endif()
+option(WP2_ENABLE_SIMD "Enable any SIMD optimization." ${WP2_ENABLE_SIMD_DEFAULT})
 set(WP2_ENABLE_CONTEXT_SWITCH
     AUTO
     CACHE STRING "Use context switch optimization for incremental decoding.")
@@ -96,7 +101,6 @@ endif()
 
 # disable some configurations for WP2_JS
 if(WP2_BUILD_WP2_JS)
-  set(WP2_ENABLE_SIMD OFF)
   set(WP2_ENABLE_TESTS OFF)
 endif()
 

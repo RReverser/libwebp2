@@ -191,6 +191,36 @@ static bool AndroidCPUInfo(WP2CPUFeature feature) {
   return false;
 }
 WP2CPUInfo WP2GetCPUInfo = AndroidCPUInfo;
+#elif defined(EMSCRIPTEN) // also needs to be before generic NEON test
+// Use compile flags as an indicator of SIMD support instead of a runtime check.
+static bool wasmCPUInfo(WP2CPUFeature feature) {
+  switch (feature) {
+    case kSSE2:
+    case kSSE3:
+    case kSlowSSSE3:
+    case kSSE4_1:
+    case kSSE4_2:
+    case kSSE:
+#ifdef WP2_USE_SSE
+      return true;
+#endif
+      return false;
+    case kAVX:
+    case kAVX2:
+#ifdef WP2_USE_AVX2
+      return true;
+#endif
+      return false;
+    case kNEON:
+#ifdef WP2_USE_NEON
+      return true;
+#endif
+      return false;
+    default:
+      return false;
+  }
+}
+WP2CPUInfo WP2GetCPUInfo = wasmCPUInfo;
 #elif defined(WP2_USE_NEON)
 // define a dummy function to enable turning off NEON at runtime by setting
 // WP2DecGetCPUInfo = NULL

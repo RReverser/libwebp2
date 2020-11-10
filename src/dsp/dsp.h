@@ -56,9 +56,6 @@ static_assert(_MSC_VER >= 1900, "Visual Studio needs to be at version >= 2015");
 # define __has_builtin(x) 0
 #endif
 
-// for now, none of the optimizations below are available in emscripten
-#if !defined(EMSCRIPTEN)
-
 #if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
 #define WP2_MSC_SSE   // Visual C++ SSE4.2 targets
 #endif
@@ -112,8 +109,6 @@ static_assert(_MSC_VER >= 1900, "Visual Studio needs to be at version >= 2015");
 #if defined(__mips_msa) && defined(__mips_isa_rev) && (__mips_isa_rev >= 5)
 #define WP2_USE_MSA
 #endif
-
-#endif  /* EMSCRIPTEN */
 
 // This macro prevents thread_sanitizer from reporting known concurrent writes.
 #define WP2_TSAN_IGNORE_FUNCTION
