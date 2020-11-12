@@ -74,28 +74,30 @@ math(EXPR WP2_SIMD_DEFINES_RANGE "${WP2_SIMD_DEFINES_LENGTH} - 1")
 
 foreach(I_SIMD RANGE ${WP2_SIMD_DEFINES_RANGE})
   list(GET WP2_SIMD_DEFINES ${I_SIMD} WP2_SIMD_DEFINE)
-
-  # First try with no extra flag added as the compiler might have default flags
-  # (especially on Android).
   unset(WP2_HAVE_${WP2_SIMD_DEFINE} CACHE)
-  set(CMAKE_REQUIRED_FLAGS_INI ${CMAKE_REQUIRED_FLAGS})
-  set(CMAKE_REQUIRED_FLAGS)
-  wp2_check_compiler_flag(${WP2_SIMD_DEFINE} ${WP2_ENABLE_SIMD})
-  if(NOT WP2_HAVE_${WP2_SIMD_DEFINE})
-    list(GET SIMD_ENABLE_FLAGS ${I_SIMD} SIMD_COMPILE_FLAG)
-    if(EMSCRIPTEN)
-      set(SIMD_COMPILE_FLAG "-msimd128 ${SIMD_COMPILE_FLAG}")
-    endif()
-    set(CMAKE_REQUIRED_FLAGS ${SIMD_COMPILE_FLAG})
+  if(NOT simd_found)
+    # First try with no extra flag added as the compiler might have default flags
+    # (especially on Android).
+    set(CMAKE_REQUIRED_FLAGS_INI ${CMAKE_REQUIRED_FLAGS})
+    set(CMAKE_REQUIRED_FLAGS)
     wp2_check_compiler_flag(${WP2_SIMD_DEFINE} ${WP2_ENABLE_SIMD})
-  else()
-    set(SIMD_COMPILE_FLAG " ")
+    if(NOT WP2_HAVE_${WP2_SIMD_DEFINE})
+      list(GET SIMD_ENABLE_FLAGS ${I_SIMD} SIMD_COMPILE_FLAG)
+      if(EMSCRIPTEN)
+        set(SIMD_COMPILE_FLAG "-msimd128 ${SIMD_COMPILE_FLAG}")
+      endif()
+      set(CMAKE_REQUIRED_FLAGS ${SIMD_COMPILE_FLAG})
+      wp2_check_compiler_flag(${WP2_SIMD_DEFINE} ${WP2_ENABLE_SIMD})
+    else()
+      set(SIMD_COMPILE_FLAG " ")
+    endif()
+    set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_INI})
   endif()
-  set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_INI})
   # Check which files we should include or not.
   if(WP2_HAVE_${WP2_SIMD_DEFINE})
     # Add the flags to the compiler for all files.
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_COMPILE_FLAG}")
+    set(simd_found 1)
   else()
     # Explicitly disable SIMD.
     if(SIMD_DISABLE_FLAGS)
