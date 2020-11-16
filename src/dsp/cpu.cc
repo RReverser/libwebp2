@@ -195,30 +195,28 @@ WP2CPUInfo WP2GetCPUInfo = AndroidCPUInfo;
 // Use compile flags as an indicator of SIMD support instead of a runtime check.
 static bool wasmCPUInfo(WP2CPUFeature feature) {
   switch (feature) {
+#ifdef WP2_USE_SSE
     case kSSE2:
     case kSSE3:
     case kSlowSSSE3:
     case kSSE4_1:
     case kSSE4_2:
     case kSSE:
-#ifdef WP2_USE_SSE
       return true;
 #endif
-      return false;
+#ifdef WP2_USE_AVX2
     case kAVX:
     case kAVX2:
-#ifdef WP2_USE_AVX2
       return true;
 #endif
-      return false;
-    case kNEON:
 #ifdef WP2_USE_NEON
+    case kNEON:
       return true;
 #endif
-      return false;
     default:
-      return false;
+      break;
   }
+  return false;
 }
 WP2CPUInfo WP2GetCPUInfo = wasmCPUInfo;
 #elif defined(WP2_USE_NEON)
